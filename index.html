@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+<!-- Load d3.js -->
+<script src="https://d3js.org/d3.v4.js"></script>
+<script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+<script src="https://d3js.org/d3-geo-projection.v2.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3-legend/2.24.0/d3-legend.js"></script
+<head>
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="navbar">
+  <a href="index.html">Map</a>
+      <a href="testfiles.html">Countries</a>
+  <div class="subnav">
+    <button class="subnavbtn">World <i class="fa fa-caret-down"></i></button>
+    <div class="subnav-content">
+      <a href="BubbleGraphForce.html">Bubble</a>
+      <a href="BubbleWorld.html">CO2 - GDP</a>
+    </div>
+  </div> 
+</div>      
+ <div align="center">
+<h1> CO2 Emissions Map</h1>
+<h2> 2020</h2>
+<!-- Create div -->
+<svg id="vis" width="1200" height="600"></svg>
+
+
+
+<script>
+
+var svg = d3.select("svg"),
+  width = +svg.attr("width"),
+  height = +svg.attr("height");
+
+//adding text on top
+svg.append("text")
+       .attr("transform", "translate(200,50)")
+       .attr("x", 0)
+       .attr("y", 0)
+       .attr("font-size", "30px")
+       .text("Select a country")
+
+//setting up the map
+var path = d3.geoPath();
+var projection = d3.geoMercator()
+  .scale(100)
+  .center([0,30])
+  .translate([width / 2, height / 2]);
+var data = d3.map();
+
+//scales
+var colorScale = d3.scaleThreshold()
+  .domain([9, 101, 501, 1001, 4001, 100001])
+  .range(d3.schemeReds[7]);
+
+//adding the labels
+var g = svg.append("g")
+    .attr("class", "legendThreshold")
+    .attr("transform", "translate(20,40)");
+g.append("text")
+    .attr("class", "caption")
+    .attr("x", 0)
+    .attr("y", -6)
+    .text("CO2 emissions (million tons)");
+var labels = ['<10', '11-100', '101-500', '501-1000', '1001-4000', '4001-10000', '> 10000'];
+var legend = d3.legendColor()
+    .labels(function (d) { return labels[d.i]; })
+    .shapePadding(4)
+    .scale(colorScale);
+svg.select(".legendThreshold")
+    .call(legend);
+
+//queue to read the data
+d3.queue()
+  .defer(d3.json, "https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson")
+  .defer(d3.csv, "co2data2020F.csv", function(d) { data.set(d.iso_code, +d.co2); })
+  .await(ready);
+
+//function to start the visualisation
+function ready(error, topography) {
+   //when mouse enters the counry
+let mouseOver = function(d) {
+    d3.selectAll(".Country")
+      .transition()
+      .duration(500)
+      .style("opacity", .5)
+    d3.select(this)
+      .transition()
+      .duration(500)
+      .style("opacity", 1)
+      .style("stroke", "black")
+    d3.select("svg text").text(d.properties.name + ": " +d.total);
+  }
+ //when mouse leaves the counry
+  let mouseLeave = function(d) {
+    d3.selectAll(".Country")
+      .transition()
+      .duration(500)
+      .style("opacity", 1)
+      .style("stroke", "transparent")
+    d3.select(this)
+      .transition()
+      .duration(500)
+      .style("stroke", "transparent")
+
+
+  }
+//drawing everything on the screen
+    svg.append('g').selectAll("path")
+    .data(topography.features)
+    .enter()
+    .append("path")
+      // draw each country
+      .attr("d", d3.geoPath()
+        .projection(projection)
+      )
+      .attr("fill", function (d) {
+        d.total = data.get(d.id) || 0;
+        return colorScale(d.total);
+      })
+      .style("stroke", "transparent")
+      .attr("class", function(d){ return "Country" } )
+      .style("opacity", 1)
+      .on("mouseover", mouseOver )
+      .on("mouseleave", mouseLeave )
+
+    }
+
+</script>
+</div>
